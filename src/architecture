@@ -1,0 +1,18 @@
+Server
+
+Runs as daemon on machines, by listenening to assigned port
+
+Transfer the executables
+
+Execute the file in server
+
+Then, it follows
+
+
+
+./middleware [options] -e [executables]
+options
+-d debug
+
+
+./executor [d|]
