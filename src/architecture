@@ -1,0 +1,8 @@
+./idle_script [options] -e [executables]
+options:
+-d debug
+
+
+./issue_script [options]
+options:
+-d debug
