@@ -4,6 +4,14 @@
 <br><br>
 <b>Note</b><br>
 This repo is under-development, since this is my final year project more time is spent on documenting rather than developing. So, will soon update my code.
-
-
-
+<br><br><br>
+<b>About Temporary script</b><br>
+Temporary scripts for idle and issue machine are provided (Its a temporary scripts, soon this will be designed as a full scale service). This script also handles only file I/O. That is the remotely executing program must only access following syscalls Open, Read, Write, Close. Morover it simplify the intial migation, we can provide execution file directly to the idle script.
+<br>
+<b>For executing</b><br>
+./issue_script [options]
+<br><br>
+./idle_script [options] -e ./exec_file
+<br><br>
+options:<br>
+debug
