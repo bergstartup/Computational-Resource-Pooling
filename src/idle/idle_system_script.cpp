@@ -163,12 +163,12 @@ if (debug)
           //read syscall
           case 0:
             //attributes : int fd,char *buf,size_t size)
-            cmp_msg =(char *) malloc(4*sizeof(int)+3);
-            memcpy(cmp_msg,&syscall_id,sizeof(int));
-            memcpy(cmp_msg+sizeof(int)+1,&syscall,sizeof(int));
-            memcpy(cmp_msg+2*sizeof(int)+2,&regs.rdi,sizeof(int));
-            memcpy(cmp_msg+3*sizeof(int)+3,&regs.rdx,sizeof(int));
-            send(new_socket,cmp_msg,4*sizeof(int)+3,0);
+            cmp_msg =(char *) malloc(3*sizeof(int)+2);
+            //memcpy(cmp_msg,&syscall_id,sizeof(int));
+            memcpy(cmp_msg,&syscall,sizeof(int));
+            memcpy(cmp_msg+sizeof(int)+1,&regs.rdi,sizeof(int));
+            memcpy(cmp_msg+2*sizeof(int)+2,&regs.rdx,sizeof(int));
+            send(new_socket,cmp_msg,3*sizeof(int)+2,0);
             free(cmp_msg);
 
             manipulate(child,&regs,&wstatus);
@@ -190,13 +190,13 @@ if (debug)
              readval = (char *) malloc(regs.rdx);
              get_data(readval,child,regs.rsi,regs.rdx);
 
-             cmp_msg = (char *) malloc(4*sizeof(int)+regs.rdx+4);
-             memcpy(cmp_msg,&syscall_id,sizeof(int));
-             memcpy((char *)cmp_msg+sizeof(int)+1,&syscall,sizeof(int));
-             memcpy((char *)cmp_msg+2*sizeof(int)+2,&regs.rdi,sizeof(int));
-             memcpy((char *)(cmp_msg+3*sizeof(int)+3),&regs.rdx,sizeof(int));
-             memcpy((char *)(cmp_msg+4*sizeof(int)+4),readval,regs.rdx);
-             send(new_socket,cmp_msg,4*sizeof(int)+regs.rdx+4,0);
+             cmp_msg = (char *) malloc(3*sizeof(int)+regs.rdx+3);
+             //memcpy(cmp_msg,&syscall_id,sizeof(int));
+             memcpy((char *)cmp_msg,&syscall,sizeof(int));
+             memcpy((char *)cmp_msg+sizeof(int)+1,&regs.rdi,sizeof(int));
+             memcpy((char *)(cmp_msg+2*sizeof(int)+2),&regs.rdx,sizeof(int));
+             memcpy((char *)(cmp_msg+3*sizeof(int)+3),readval,regs.rdx);
+             send(new_socket,cmp_msg,3*sizeof(int)+regs.rdx+3,0);
              free(cmp_msg);
 
 
@@ -216,11 +216,11 @@ if (debug)
           //close syscall
           case 3:
             //attributes : int fd
-            cmp_msg=(char *)malloc(3*sizeof(int)+2);
-            memcpy(cmp_msg,&syscall_id,sizeof(int));
-            memcpy(cmp_msg+sizeof(int)+1,&syscall,sizeof(int));
-            memcpy(cmp_msg+2*sizeof(int)+2,&regs.rdi,sizeof(int));
-            send(new_socket,cmp_msg,3*sizeof(int)+2,0);
+            cmp_msg=(char *)malloc(2*sizeof(int)+1);
+            //memcpy(cmp_msg,&syscall_id,sizeof(int));
+            memcpy(cmp_msg,&syscall,sizeof(int));
+            memcpy(cmp_msg+sizeof(int)+1,&regs.rdi,sizeof(int));
+            send(new_socket,cmp_msg,2*sizeof(int)+1,0);
             free(cmp_msg);
 
             manipulate(child,&regs,&wstatus);
@@ -243,11 +243,11 @@ if (debug)
               break;
 
             //attributes : int fd,struct stat *buf
-            cmp_msg=(char *)malloc(3*sizeof(int)+2);
-            memcpy(cmp_msg,&syscall_id,sizeof(int));
-            memcpy(cmp_msg+sizeof(int)+1,&syscall,sizeof(int));
-            memcpy(cmp_msg+2*sizeof(int)+2,&regs.rdi,sizeof(int));
-            send(new_socket,cmp_msg,3*sizeof(int)+2,0);
+            cmp_msg=(char *)malloc(2*sizeof(int)+1);
+            //memcpy(cmp_msg,&syscall_id,sizeof(int));
+            memcpy(cmp_msg,&syscall,sizeof(int));
+            memcpy(cmp_msg+sizeof(int)+1,&regs.rdi,sizeof(int));
+            send(new_socket,cmp_msg,2*sizeof(int)+1,0);
             free(cmp_msg);
 
             manipulate(child,&regs,&wstatus);
@@ -267,14 +267,14 @@ if (debug)
             readval = (char *) malloc(regs.rdx);
             get_data(readval,child,regs.rsi,255); //255 max file size
 
-            cmp_msg = (char *)malloc(sizeof(long long int)+5*sizeof(int)+255+5);
-            memcpy(cmp_msg,&syscall_id,sizeof(int));
-            memcpy((char *)cmp_msg+sizeof(int)+1,&syscall,sizeof(int));
-            memcpy((char *)cmp_msg+2*sizeof(int)+2,&regs.rdi,sizeof(long long int));
-            memcpy((char *)(cmp_msg+2*sizeof(int)+sizeof(long long int)+3),&regs.rdx,sizeof(int));
-            memcpy((char *)(cmp_msg+3*sizeof(int)+sizeof(long long int)+4),&regs.r10,sizeof(int));
-            memcpy((char *)(cmp_msg+4*sizeof(int)+sizeof(long long int)+5),readval,255);
-            send(new_socket,cmp_msg,5*sizeof(int)+sizeof(long long int)+255+5,0);
+            cmp_msg = (char *)malloc(sizeof(long long int)+3*sizeof(int)+255+4);
+            //memcpy(cmp_msg,&syscall_id,sizeof(int));
+            memcpy((char *)cmp_msg,&syscall,sizeof(int));
+            memcpy((char *)cmp_msg+sizeof(int)+1,&regs.rdi,sizeof(long long int));
+            memcpy((char *)(cmp_msg+sizeof(int)+sizeof(long long int)+2),&regs.rdx,sizeof(int));
+            memcpy((char *)(cmp_msg+2*sizeof(int)+sizeof(long long int)+3),&regs.r10,sizeof(int));
+            memcpy((char *)(cmp_msg+3*sizeof(int)+sizeof(long long int)+4),readval,255);
+            send(new_socket,cmp_msg,3*sizeof(int)+sizeof(long long int)+255+4,0);
             free(cmp_msg);
 
             manipulate(child,&regs,&wstatus);
