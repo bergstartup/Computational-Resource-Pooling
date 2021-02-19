@@ -10,11 +10,9 @@ Temporary scripts for idle and issue machine are provided (Its a temporary scrip
 <br>
 <b>For executing</b><br>
 ```
-./issue_script [options]
-```
-<br><br>
-```
-./idle_script [options] -e ./exec_file
+./issue [options]
+
+./idle [options] -e ./exec_file
 ```
 <br><br>
 options:<br>
