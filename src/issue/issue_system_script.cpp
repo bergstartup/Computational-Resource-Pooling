@@ -8,7 +8,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-short debug=0;
+
+
+ bool debug=false;
 
 int socket_connect(){
   int sock=0;
@@ -34,7 +36,7 @@ int main(int args,char *argv[])
 
   for(int i=1;i<args;i++){
     if(strcmp(argv[i],"-d")==0)
-      debug=1;
+      debug=true;
   }
 
 
@@ -44,7 +46,7 @@ int main(int args,char *argv[])
   syscall = (int *)recv_buf;
   int syscall_count=0;
   while(*syscall!=-1){
-  if(debug==1)
+  if(debug)
     printf("Syscall %d\n",*syscall);
 
    switch(*syscall){
@@ -63,7 +65,7 @@ int main(int args,char *argv[])
       fd = (int *)(recv_buf+sizeof(int)+1);
       size = (int *)(recv_buf+2*sizeof(int)+2);
       ret=read(*fd,buf,*size);
-      if(debug==1)
+      if(debug)
         printf("Syscall: read | Attrib: [int : fd] %d , [int: size] %d | ret: [int] %d\n",*fd,*size,ret);
       makemsg=(char *)malloc(sizeof(int)+ret+1);
       memcpy(makemsg,&ret,sizeof(int));
@@ -79,7 +81,7 @@ int main(int args,char *argv[])
       size = (int *)(recv_buf+2*sizeof(int)+2);
       msg = recv_buf+3*sizeof(int)+3;
       ret=write(*fd,msg,*size);
-      if(debug==1)
+      if(debug)
         printf("Syscall: write | Attrib: [int : fd] %d , [int: size] %d | ret: [int] %d\n",*fd,*size,ret);
       for(int i=0;i<2;i++)
       send(sock,&ret,sizeof(int),0);
@@ -90,7 +92,7 @@ int main(int args,char *argv[])
       //close fd
       fd=(int *)(recv_buf+sizeof(int)+1);
       ret=close(*fd);
-      if(debug==1)
+      if(debug)
         printf("Syscall: close | Attrib: [int : fd] %d | ret: [int] %d\n",*fd,ret);
       send(sock,&ret,sizeof(int),0);
       break;
@@ -100,7 +102,7 @@ int main(int args,char *argv[])
       fd=(int *)(recv_buf+sizeof(int)+1);
       fstat(*fd,&send_stat);
       msg=(char *)&send_stat;
-      if(debug==1)
+      if(debug)
         printf("Syscall: fstat | Attrib : [int : fd] %d\n",*fd);
       send(sock,msg,sizeof(struct stat),0);
       break;
@@ -113,7 +115,7 @@ int main(int args,char *argv[])
       msg = recv_buf+sizeof(long long int)+3*sizeof(int)+4;
       //printf("All parameters: %lld , %d , %d ,%s\n",*dirfd,*flag,*mode,msg);
       ret=openat(*dirfd,msg,*flag,*mode);
-      if(debug==1)
+      if(debug)
         printf("Syscall: openat | Attrib: [dirfd : long long int] %lld , [flag : int] %d , [mode : int ] %d\n",*dirfd,*flag,*mode);
       send(sock,&ret,sizeof(int),0);
       break;

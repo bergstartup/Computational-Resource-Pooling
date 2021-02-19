@@ -15,6 +15,8 @@
 //global data
 bool debug=false;
 
+
+//Get the data from a memory location
 void get_data(char *str,pid_t child,long long int addr,long long int size){
   /*
   Addr of the data written is in regs.rsi and size of data in regs.rdx
@@ -35,6 +37,8 @@ void get_data(char *str,pid_t child,long long int addr,long long int size){
 }
 
 
+
+//Put the data to a memory location
 void put_data(char *str,pid_t child,long long int addr,int size){
   int i=0;
   int j=(int) (size/sizeof(long));
@@ -49,7 +53,7 @@ void put_data(char *str,pid_t child,long long int addr,int size){
   }
 }
 
-
+//Chnage the syscall to dummy
 void manipulate(pid_t child,struct user_regs_struct *regs,int *wstatus){
    regs->orig_rax=39;//change to dummy syscall
    ptrace(PTRACE_SETREGS,child,NULL,regs);
@@ -57,6 +61,7 @@ void manipulate(pid_t child,struct user_regs_struct *regs,int *wstatus){
    wait(wstatus);
 }
 
+//Socket operation : listen
 int socket_connect(){
   //decl(s)
   int serverfd,new_socket;
@@ -83,6 +88,8 @@ int socket_connect(){
   return new_socket;
 }
 
+
+//Main functiuon
 int main(int args, char *argv[]){
 /*
 ./middleware [options[d]] -e exec_file
