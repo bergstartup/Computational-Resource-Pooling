@@ -15,7 +15,7 @@ Temporary scripts for idle and issue machine are provided (Its a temporary scrip
 ./idle [options] -e ./exec_file
 ```
 
-<br><br>
+<br>
 options:<br>
 -d debug<br><br>
 The sample remote program could be used for checking remote execution
