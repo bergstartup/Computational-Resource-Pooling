@@ -1,0 +1,26 @@
+Threads:
+Controller [daemon]
+UDPListner [daemon]
+HandlerFunction
+
+
+
+Controller descriptions
+Pids and jobs
+0 : Submit a process remote
+1 : Asking for resource
+2 : Heartbeat
+3 : JobCompletion report from local
+4 : JobCompletion reprt from remote
+
+
+Data Recev in event queue
+[0]=>pid
+[1]=>msg
+
+Message in event
+For pid=0: [Submit a process for remote execution]
+ msg[0]=>exec path
+ msg[1]=>executable
+ msg[2]=>no of replicas
+ msg[3]=>local_addr
