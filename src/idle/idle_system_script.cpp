@@ -14,7 +14,7 @@
 
 //global data
 bool debug=false;
-
+vector<int> syscall_capture;
 
 //Get the data from a memory location
 void get_data(char *str,pid_t child,long long int addr,long long int size){
