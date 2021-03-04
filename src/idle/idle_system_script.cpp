@@ -1,21 +1,51 @@
-#include<stdio.h>
-#include<unistd.h>
-#include<stdlib.h>
-#include<sys/user.h>
-#include<sys/ptrace.h>
-#include<sys/wait.h>
-#include<string.h>
-#include<sys/stat.h>
-#include<sys/socket.h>
-#include<sys/socket.h>
-#include<netinet/in.h>
-#include<arpa/inet.h>
-#include<string.h>
+/*
+About idle_system_script
+1.Get exec addr to execute and ip,port for issue system connection[addr,port,file]
+2.Connect with issue system [tcp connection]
+3.Fork and make child to exec the file
+4.Make parent to trace and interrupt child's syscall and send to issue System
+5.Get syscall's return result and place the same to child
+6.Repeat step 4&5 till child exits
+exec:
+./idle -e "" -h "" -p //e for exec_file, h for host and p for port
+*/
 
-//global data
+
+/*
+-------------------------
+Libraries import
+-------------------------
+*/
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/user.h>
+#include <sys/ptrace.h>
+#include <sys/wait.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/socket.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <string.h>
+#include <getopt.h>
+#include <string.h>
+
+/*
+-------------------------
+Global declarations
+-------------------------
+*/
 bool debug=false;
-vector<int> syscall_capture;
+int port;
+char issue_system_addr;
 
+/*
+-------------------------
+Function descriptions
+-------------------------
+*/
 //Get the data from a memory location
 void get_data(char *str,pid_t child,long long int addr,long long int size){
   /*
@@ -35,8 +65,6 @@ void get_data(char *str,pid_t child,long long int addr,long long int size){
     i++;
   }
 }
-
-
 
 //Put the data to a memory location
 void put_data(char *str,pid_t child,long long int addr,int size){
@@ -61,33 +89,42 @@ void manipulate(pid_t child,struct user_regs_struct *regs,int *wstatus){
    wait(wstatus);
 }
 
-//Socket operation : listen
+//Socket operation : connect
+//Need to send addr
 int socket_connect(){
-  //decl(s)
-  int serverfd,new_socket;
-  int opt=1;
-  struct sockaddr_in address;
-  int addrlen=sizeof(address);
+  int sockfd;
+  struct sockaddr_in servaddr;
 
-  //server socker def
-  serverfd=socket(AF_INET,SOCK_STREAM,0); //create a socket
-  //addr definition
-  address.sin_family=AF_INET;
-  address.sin_addr.s_addr=INADDR_ANY;
-  address.sin_port=htons(8000);
-  //Force the address on socket
-  setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,&opt, sizeof(opt));
-  //bind
-  bind(serverfd, (struct sockaddr * )&address,sizeof(address));
-  //listen
-  listen(serverfd,1);
-  //accept the new connection
-  new_socket=accept(serverfd,(struct sockaddr * )&address,(socklen_t *)&addrlen);
-  if (debug)
-    printf("Connected\n");
-  return new_socket;
+  // socket create and verification
+  sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  if (sockfd == -1) {
+     if (debug)
+      printf("socket creation failed...\n");
+      exit(0);
+  }
+  else{
+      if (debug)
+        printf("Socket successfully created..\n");
+  }
+  //clearing out servaddr variable
+  bzero(&servaddr, sizeof(servaddr));
+  // assign IP, PORT
+  servaddr.sin_family = AF_INET;
+  servaddr.sin_addr.s_addr = inet_addr(issue_system_addr);
+  servaddr.sin_port = htons(port);
+
+  // connect the client socket to server socket
+  if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) {
+      if (debug)
+        printf("connection with the server failed...\n");
+      exit(0);
+  }
+  else{
+      if (debug)
+        printf("connected to the server..\n");
+  }
+  return sockfd;
 }
-
 
 //Main functiuon
 int main(int args, char *argv[]){
@@ -95,6 +132,7 @@ int main(int args, char *argv[]){
 ./middleware [options[d]] -e exec_file
 */
 char *exec_file;
+//Parsing cmd line argumants,use getopt
 for(int i=1;i<args;i++){
   if(strcmp(argv[i],"-d")==0){
     debug=true;
@@ -104,6 +142,7 @@ for(int i=1;i<args;i++){
     break;
   }
 }
+
 if (debug)
   printf("File to execute : %s\n",exec_file);
 
@@ -114,7 +153,7 @@ if (debug)
  if (child==0){
   ptrace(PTRACE_TRACEME,child,NULL,NULL);
   execl(exec_file,exec_file+2,NULL);
-}//end of child
+ }//end of child
 
 
  //Parent
@@ -130,7 +169,7 @@ if (debug)
   int new_socket;
 
 
-  //create a listenting socket and get a client connection for ecporting I/O
+  //connect to issue system socket
   new_socket=socket_connect();
   wait(&wstatus);//wait returned when child call traceme
 
@@ -267,7 +306,6 @@ if (debug)
             break;
 
 
-
           //openat syscall
           case 257:
             //attributes : int dirfd,const char *pathname,int flags
@@ -316,8 +354,8 @@ if (debug)
     break;
 
   }//end of while
-  //close the client
+  //Stating to issue system that child has exited
   status=-1;
   send(new_socket,&status,sizeof(int),0);
  }//end of else
-}//end of main
+}//end of main`

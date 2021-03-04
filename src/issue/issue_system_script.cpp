@@ -1,81 +1,105 @@
-#include<stdio.h>
-#include<sys/socket.h>
-#include<netinet/in.h>
-#include<unistd.h>
-#include<string.h>
-#include<arpa/inet.h>
-#include<stdlib.h>
+/*
+About issue_system_script
+1.Gets activated by issue_init
+2.Get cmd line arguments and parse it[debug,port,noofreplicas]
+3.TCP listen@port
+4.Get multiple connections, and execute syscall handlers async for each connections
+5.Have a common syscall_capture vector
+6.Use the FT approch to reply to syscalls
+exec:
+./issue -p -r -d //p for port, r for no of replicas, d for debug
+*/
+
+/*
+###############################################################
+Proposing change in structure
+A thread to listen for connections
+If got one,run a thread that handles syscalls
+By keeping syscall_capture vector common to all handler threads
+###############################################################
+*/
+
+/*
+-------------------------
+Libraries import
+-------------------------
+*/
+#include <stdio.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
-
+#include <thread.h>
+#include <getopt.h>
+/*
+-------------------------
+Global declarations
+-------------------------
+*/
 bool debug=false;
+vector<int> syscall_capture;//common to handler threads require mutex
 
+/*
+-------------------------
+Function descriptions
+-------------------------
+*/
 
+//TCP socket listner@port
+int socket_listen(int port,int replicas){
+  /*
+  Let master thread run this socket listener
+  On connection, create a thread and run syscall_handler with the new sock as parameter
+  And listen for connections again
+  */
+  //decl(s)
+  int serverfd,new_socket;
+  int opt=1;
+  struct sockaddr_in address;
+  int addrlen=sizeof(address);
 
-
-int socket_connect(){
-  int sock=0;
-  struct sockaddr_in serv_addr;
-  sock=socket(AF_INET,SOCK_STREAM,0);
-  serv_addr.sin_family=AF_INET;
-  serv_addr.sin_port=htons(8000);
-  inet_pton(AF_INET,"127.0.0.1",&serv_addr.sin_addr);
-  connect(sock,(struct sockaddr *)&serv_addr,sizeof(serv_addr));
-  return sock;
+  //server socker def
+  serverfd=socket(AF_INET,SOCK_STREAM,0); //create a socket
+  //addr definition
+  address.sin_family=AF_INET;
+  address.sin_addr.s_addr=INADDR_ANY;
+  address.sin_port=htons(port);
+  //Force the address on socket
+  setsockopt(serverfd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT,&opt, sizeof(opt));
+  //bind
+  bind(serverfd, (struct sockaddr * )&address,sizeof(address));
+  //listen
+  listen(serverfd,replicas);
+  //accept the new connection(s)
+  while (true){
+    new_socket=accept(serverfd,(struct sockaddr * )&address,(socklen_t *)&addrlen);
+    if (debug)
+      printf("Connected with \n");//print as well as the address
+    //create thread with new_socket as parameter
+    std::thread th(syscall_handler,new_socket);
+  }
 }
 
-int main(int args,char *argv[])
-{
-
+//Syscall handlers
+void syscall_handler(int sock){
+  //necessary variable declarations
   char recv_buf[100];
   int *syscallid,*syscall,*size,*fd,*flag,*mode;
   long long int *dirfd;
   char *msg,buf[100],*makemsg;
   int ret,sock;
-
   struct stat send_stat;
 
-  for(int i=1;i<args;i++){
-    if(strcmp(argv[i],"-d")==0)
-      debug=true;
-  }
-
-  //talk to local Dameon and get port to listen
-  int sockfd;
-  char buffer[1024];
-  int n, len;
-  char *init_msg = "Hello from client";
-  struct sockaddr_in     servaddr;
-
-  // Creating socket file descriptor
-  if ( (sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
-      perror("socket creation failed");
-      exit(EXIT_FAILURE);
-  }
-
-  memset(&servaddr, 0, sizeof(servaddr));
-
-  // Filling server information
-  servaddr.sin_family = AF_INET;
-  servaddr.sin_port = htons(8000);
-  servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-
-
-  sendto(sockfd, (const char *)init_msg, strlen(init_msg),
-      MSG_CONFIRM, (const struct sockaddr *) &servaddr,
-          sizeof(servaddr));
-  n = recvfrom(sockfd, (char *)buffer, 1024,
-              MSG_WAITALL, (struct sockaddr *) &servaddr,
-              &len);
-  close(sockfd);
-
-  //connect with idle node(s)
-  sock=socket_connect();
+  //read msg from socket, contains [syscall,args...]
   read(sock,recv_buf,100);
+  //Extract syscall from msg
   syscall = (int *)recv_buf;
-  int syscall_count=0;
+  //Loop till recv syscall as -1
   while(*syscall!=-1){
   if(debug)
     printf("Syscall %d\n",*syscall);
@@ -89,7 +113,6 @@ int main(int args,char *argv[])
       3. Compose the return message
       4. Send to server
      */
-
      //read
      case 0:
       // int fd,int size
@@ -154,8 +177,21 @@ int main(int args,char *argv[])
     default:
       break;
    }//end of switch
-   syscall_count+=1;
    read(sock,recv_buf,100);
    syscall = (int *)recv_buf;
- }//end of while
+  }//end of while
+  //close socket
+}
+
+//Main function
+int main(int args,char *argv[]){
+  //Parsing cmd line arguments; use getopt
+  for(int i=1;i<args;i++){
+    if(strcmp(argv[i],"-d")==0)
+      debug=true;
+  }
+
+  //Listen to connections
+  socket_listen();
+
 }//end of main
