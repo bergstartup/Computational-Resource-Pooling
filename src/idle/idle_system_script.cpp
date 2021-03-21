@@ -39,7 +39,7 @@ Global declarations
 */
 bool debug=false;
 int port;
-char issue_system_addr;
+char issue_system_addr[100];
 
 /*
 -------------------------
@@ -81,6 +81,8 @@ void put_data(char *str,pid_t child,long long int addr,int size){
   }
 }
 
+
+
 //Chnage the syscall to dummy
 void manipulate(pid_t child,struct user_regs_struct *regs,int *wstatus){
    regs->orig_rax=39;//change to dummy syscall
@@ -88,6 +90,9 @@ void manipulate(pid_t child,struct user_regs_struct *regs,int *wstatus){
    ptrace(PTRACE_SYSCALL,child,NULL,NULL);
    wait(wstatus);
 }
+
+
+
 
 //Socket operation : connect
 //Need to send addr
@@ -110,11 +115,11 @@ int socket_connect(){
   bzero(&servaddr, sizeof(servaddr));
   // assign IP, PORT
   servaddr.sin_family = AF_INET;
-  servaddr.sin_addr.s_addr = inet_addr(issue_system_addr);
-  servaddr.sin_port = htons(port);
+  servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");//issue_system_addr <change>
+  servaddr.sin_port = htons(8000);//port <change>
 
   // connect the client socket to server socket
-  if (connect(sockfd, (SA*)&servaddr, sizeof(servaddr)) != 0) {
+  if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) != 0) {
       if (debug)
         printf("connection with the server failed...\n");
       exit(0);
@@ -126,25 +131,26 @@ int socket_connect(){
   return sockfd;
 }
 
+
+
+
+
 //Main functiuon
 int main(int args, char *argv[]){
-/*
-./middleware [options[d]] -e exec_file
-*/
-char *exec_file;
-//Parsing cmd line argumants,use getopt
-for(int i=1;i<args;i++){
-  if(strcmp(argv[i],"-d")==0){
-    debug=true;
-  }
-  else if(strcmp(argv[i],"-e")==0){
-    exec_file=argv[i+1];
-    break;
-  }
-}
 
-if (debug)
-  printf("File to execute : %s\n",exec_file);
+  char *exec_file;
+  //Parsing cmd line argumants,use getopt
+  for(int i=1;i<args;i++){
+    if(strcmp(argv[i],"-d")==0){
+      debug=true;
+    }
+    else if(strcmp(argv[i],"-e")==0){
+      exec_file=argv[i+1];
+      break;
+    }
+  }
+  if (debug)
+    printf("File to execute : %s\n",exec_file);
 
  //fork a child
  pid_t child=fork();
@@ -204,6 +210,11 @@ if (debug)
           case -1:
             //break away from while loop
             kill=1;
+            cmp_msg =(char *) malloc(2*sizeof(int)+1);
+            memcpy(cmp_msg,&syscall_id,sizeof(int));
+            memcpy(cmp_msg+sizeof(int)+1,&syscall,sizeof(int));
+            send(new_socket,cmp_msg,2*sizeof(int)+1,0);
+            free(cmp_msg);
             break;
 
           //read syscall
@@ -228,6 +239,7 @@ if (debug)
             if (debug)
               printf("Syscall: Read | Attributes : [int : fd] %lld , [int : size] %lld\n",regs.rdi,regs.rdx);
 
+            syscall_id+=1;
             break;
 
           //write syscall
@@ -245,6 +257,8 @@ if (debug)
              send(new_socket,cmp_msg,4*sizeof(int)+regs.rdx+4,0);
              free(cmp_msg);
 
+             if (debug)
+              printf("Sent syscall_id is %d",syscall_id);
 
              manipulate(child,&regs,&wstatus);
 
@@ -255,6 +269,8 @@ if (debug)
 
              if (debug)
                printf("Syscall: Write | Attributes : [int : fd] %lld , [String : buf] %s , [int : size] %lld\n",regs.rdi,readval,regs.rdx);
+
+            syscall_id+=1;
              break;
 
 
@@ -278,6 +294,8 @@ if (debug)
 
             if (debug)
               printf("Syscall: Close | Attributes : [int : fd] %lld \n",regs.rdi);
+
+            syscall_id+=1;
             break;
 
 
@@ -303,6 +321,8 @@ if (debug)
 
             if (debug)
               printf("Syscall: fstat | Attributes : [int : fd] %lld \n",regs.rdi);
+
+            syscall_id+=1;
             break;
 
 
@@ -331,6 +351,8 @@ if (debug)
 
             if (debug)
               printf("Syscall: openat | Attributes : [int : fd] %lld , [string : filename] %s , [int : flags] %lld \n ",regs.rdi,readval,regs.r10);
+
+            syscall_id+=1;
             break;
 
 
@@ -341,7 +363,6 @@ if (debug)
            break;
 
      }//end of switch
-     syscall_id+=1;
      status=ptrace(PTRACE_GETREGS,child,NULL,&regs);
      printf("[EX] return val[rax] : %lld\n\n",regs.rax);
    }//end of if
@@ -356,6 +377,10 @@ if (debug)
   }//end of while
   //Stating to issue system that child has exited
   status=-1;
-  send(new_socket,&status,sizeof(int),0);
+  cmp_msg =(char *) malloc(2*sizeof(int)+1);
+  memcpy(cmp_msg,&syscall_id,sizeof(int));
+  memcpy(cmp_msg+sizeof(int)+1,&status,sizeof(int));
+  send(new_socket,cmp_msg,2*sizeof(int)+1,0);
+  free(cmp_msg);
  }//end of else
 }//end of main`
