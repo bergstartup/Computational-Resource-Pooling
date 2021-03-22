@@ -34,13 +34,17 @@ Libraries import
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <thread.h>
+#include <vector>
+#include <mutex>
+#include <thread>
+#include <pthread.h>
 #include <getopt.h>
 /*
 -------------------------
 Global declarations
 -------------------------
 */
+using namespace std;
 bool debug=false;
 std::vector<void *> syscall_capture;//2d 0 for data and 1 for size
 std::vector<int> syscall_capture_size;
@@ -52,8 +56,157 @@ Function descriptions
 -------------------------
 */
 
-//TCP socket listner@port
-int socket_listen(int port,int replicas){
+//Syscall handlers
+void syscall_handler(int sock){
+  //necessary variable declarations
+  char recv_buf[100],*traverse;
+  int *syscall_id,*syscall,*size,*fd,*flag,*mode;
+  long long int *dirfd;
+  char *msg,buf[100],*makemsg;
+  int ret;
+  struct stat send_stat;
+  if (debug){
+    printf("Syscall listening\n");
+  }
+  //read msg from socket, contains [syscall,args...]
+
+  read(sock,recv_buf,100);
+  traverse=recv_buf;
+  //Extract syscall_id and syscall from msg
+  syscall_id=(int *)traverse;
+  syscall = (int *)(traverse+sizeof(int)+1);
+  traverse+=2*sizeof(int)+2;//offset
+  //Loop till recv syscall as -1
+  while(*syscall!=-1){
+  if(debug)
+    printf("Syscall %d\n",*syscall);
+
+   //sync with all threads
+   count_lock.lock();
+   if (*syscall_id>count){
+     //change global count
+     count=*syscall_id;
+     switch(*syscall){
+       //genral structure
+       /*
+       case syscall:
+        1. Get the argument
+        2. Execute the syscall
+        3. Compose the return message
+        4. Send to server
+       */
+       //read
+       case 0:
+        // int fd,int size
+        fd = (int *)traverse;
+        size = (int *)(traverse+2*sizeof(int)+2);
+        ret=read(*fd,buf,*size);
+        if(debug)
+          printf("Syscall: read | Attrib: [int : fd] %d , [int: size] %d | ret: [int] %d\n",*fd,*size,ret);
+        makemsg=(char *)malloc(sizeof(int)+ret+1);
+        memcpy(makemsg,&ret,sizeof(int));
+        memcpy(makemsg+sizeof(int)+1,buf,ret);
+        send(sock,makemsg,sizeof(int)+ret+1,0);
+
+        //capturing syscall and its size
+        syscall_capture_size.push_back(sizeof(int)+ret+1);
+        syscall_capture.push_back(makemsg);
+        //memcpy(syscall_capture[count],makemsg,syscall_capture_size[count]);
+        break;
+
+
+      //write
+       case 1:
+        // int fd, int size, string msg
+        fd=(int *)traverse;
+        size = (int *)(traverse+sizeof(int)+1);
+        msg = traverse+2*sizeof(int)+2;
+        ret=write(*fd,msg,*size);
+        if(debug)
+          printf("Syscall: write | Attrib: [int : fd] %d , [int: size] %d | ret: [int] %d\n",*fd,*size,ret);
+        send(sock,&ret,sizeof(int),0);
+
+        //capturing syscall and its size
+        syscall_capture_size.push_back(sizeof(int));
+        syscall_capture.push_back(makemsg);
+        break;
+
+      //close
+      case 3:
+        //close fd
+        fd=(int *)traverse;
+        ret=close(*fd);
+        if(debug)
+          printf("Syscall: close | Attrib: [int : fd] %d | ret: [int] %d\n",*fd,ret);
+        send(sock,&ret,sizeof(int),0);
+        memcpy(syscall_capture[count],makemsg,sizeof(int));
+
+        //capturing syscall and its size
+        syscall_capture_size.push_back(sizeof(int));
+        syscall_capture.push_back(makemsg);
+        //memcpy(syscall_capture[count],makemsg,syscall_capture_size[count]);
+        break;
+
+      //fstat
+      case 5:
+        //fstat fd
+        fd=(int *)traverse;
+        fstat(*fd,&send_stat);
+        msg=(char *)&send_stat;
+        if(debug)
+          printf("Syscall: fstat | Attrib : [int : fd] %d\n",*fd);
+        send(sock,msg,sizeof(struct stat),0);
+
+        //capturing syscall and its size
+        syscall_capture_size.push_back(sizeof(struct stat));
+        syscall_capture.push_back(makemsg);
+        //memcpy(syscall_capture[count],makemsg,syscall_capture_size[count]);
+        break;
+
+      //open at
+      case 257:
+        //openat dirfd,flags,filename
+        dirfd=(long long int *)traverse;
+        flag = (int *)(traverse+1*sizeof(int)+sizeof(long long int)+2);
+        mode = (int *)(traverse+2*sizeof(int)+sizeof(long long int)+3);
+        msg = traverse+sizeof(long long int)+3*sizeof(int)+4;
+        //printf("All parameters: %lld , %d , %d ,%s\n",*dirfd,*flag,*mode,msg);
+        ret=openat(*dirfd,msg,*flag,*mode);
+        if(debug)
+          printf("Syscall: openat | Attrib: [dirfd : long long int] %lld , [flag : int] %d , [mode : int ] %d\n",*dirfd,*flag,*mode);
+        send(sock,&ret,sizeof(int),0);
+
+        //capturing syscall and its size
+        syscall_capture_size.push_back(sizeof(int));
+        syscall_capture.push_back(makemsg);
+        //memcpy(syscall_capture[count],makemsg,syscall_capture_size[count]);
+        break;
+
+      default:
+        break;
+    }//end of switch
+   }//end of if for syscall_id check
+   else{
+      //memcpy(makemsg,syscall_capture[*syscall_id],syscall_capture_size[*syscall_id]);
+      send(sock,syscall_capture[*syscall_id],syscall_capture_size[*syscall_id],0);
+   }
+   count_lock.unlock();
+
+   read(sock,recv_buf,100);
+   traverse=recv_buf;
+   syscall_id=(int *)traverse;
+   syscall = (int *)(traverse+sizeof(int)+1);
+   traverse+=2*sizeof(int)+2;//offset
+  }//end of while
+  //close socket
+  close(sock);
+  if (debug)
+    printf("Finished execution\n");
+}
+
+
+//TCP socket listner@port <change>
+void socket_listen(int port=8000,int replicas=2){
   /*
   Let master thread run this socket listener
   On connection, create a thread and run syscall_handler with the new sock as parameter
@@ -83,148 +236,12 @@ int socket_listen(int port,int replicas){
     if (debug)
       printf("Connected with \n");//print as well as the address
     //create thread with new_socket as parameter
-    std::thread th(syscall_handler,new_socket);
+    thread th(syscall_handler,new_socket);
+    th.detach();
   }
 }
 
-//Syscall handlers
-void syscall_handler(int sock){
-  //necessary variable declarations
-  char recv_buf[100];
-  int *syscall_id,*syscall,*size,*fd,*flag,*mode;
-  long long int *dirfd;
-  char *msg,buf[100],*makemsg;
-  int ret,sock;
-  struct stat send_stat;
 
-  //read msg from socket, contains [syscall,args...]
-  read(sock,recv_buf,100);
-  //Extract syscall_id and syscall from msg
-  syscall_id=(int *)recv_buf;
-  syscall = (int *)(recv_buf+sizeof(int)+1);
-  recv_buf+=2*sizeof(int)+2;//offset
-
-  //Loop till recv syscall as -1
-  while(*syscall!=-1){
-  if(debug)
-    printf("Syscall %d\n",*syscall);
-
-   //sync with all threads
-   count_lock.lock();
-   if (*syscall_id>count){
-     //change global count
-     count+=1;
-     switch(*syscall){
-       //genral structure
-       /*
-       case syscall:
-        1. Get the argument
-        2. Execute the syscall
-        3. Compose the return message
-        4. Send to server
-       */
-       //read
-       case 0:
-        // int fd,int size
-        fd = (int *)recv_buf;
-        size = (int *)(recv_buf+2*sizeof(int)+2);
-        ret=read(*fd,buf,*size);
-        if(debug)
-          printf("Syscall: read | Attrib: [int : fd] %d , [int: size] %d | ret: [int] %d\n",*fd,*size,ret);
-        makemsg=(char *)malloc(sizeof(int)+ret+1);
-        memcpy(makemsg,&ret,sizeof(int));
-        memcpy(makemsg+sizeof(int)+1,buf,ret);
-        send(sock,makemsg,sizeof(int)+ret+1,0);
-
-        //capturing syscall and its size
-        syscall_capture_size[count]=sizeof(int)+ret+1;
-        memcpy(syscall_capture[count],makemsg,syscall_capture_size[count]);
-        break;
-
-
-      //write
-       case 1:
-        // int fd, int size, string msg
-        fd=(int *)recv_buf;
-        size = (int *)(recv_buf+2*sizeof(int)+2);
-        msg = recv_buf+3*sizeof(int)+3;
-        ret=write(*fd,msg,*size);
-        if(debug)
-          printf("Syscall: write | Attrib: [int : fd] %d , [int: size] %d | ret: [int] %d\n",*fd,*size,ret);
-        for(int i=0;i<2;i++)
-        send(sock,&ret,sizeof(int),0);
-
-        //capturing syscall and its size
-        syscall_capture_size[count]=sizeof(int);
-        memcpy(syscall_capture[count],makemsg,syscall_capture_size[count]);
-        break;
-
-      //close
-      case 3:
-        //close fd
-        fd=(int *)recv_buf;
-        ret=close(*fd);
-        if(debug)
-          printf("Syscall: close | Attrib: [int : fd] %d | ret: [int] %d\n",*fd,ret);
-        send(sock,&ret,sizeof(int),0);
-        memcpy(syscall_capture[count],makemsg,sizeof(int));
-
-        //capturing syscall and its size
-        syscall_capture_size[count]=sizeof(int);
-        memcpy(syscall_capture[count],makemsg,syscall_capture_size[count]);
-        break;
-
-      //fstat
-      case 5:
-        //fstat fd
-        fd=(int *)recv_buf;
-        fstat(*fd,&send_stat);
-        msg=(char *)&send_stat;
-        if(debug)
-          printf("Syscall: fstat | Attrib : [int : fd] %d\n",*fd);
-        send(sock,msg,sizeof(struct stat),0);
-
-        //capturing syscall and its size
-        syscall_capture_size[count]=sizeof(struct stat);
-        memcpy(syscall_capture[count],makemsg,syscall_capture_size[count]);
-        break;
-
-      //open at
-      case 257:
-        //openat dirfd,flags,filename
-        dirfd=(long long int *)recv_buf;
-        flag = (int *)(recv_buf+1*sizeof(int)+sizeof(long long int)+2);
-        mode = (int *)(recv_buf+2*sizeof(int)+sizeof(long long int)+3);
-        msg = recv_buf+sizeof(long long int)+3*sizeof(int)+4;
-        //printf("All parameters: %lld , %d , %d ,%s\n",*dirfd,*flag,*mode,msg);
-        ret=openat(*dirfd,msg,*flag,*mode);
-        if(debug)
-          printf("Syscall: openat | Attrib: [dirfd : long long int] %lld , [flag : int] %d , [mode : int ] %d\n",*dirfd,*flag,*mode);
-        send(sock,&ret,sizeof(int),0);
-
-        //capturing syscall and its size
-        syscall_capture_size[count]=sizeof(int);
-        memcpy(syscall_capture[count],makemsg,syscall_capture_size[count]);
-        break;
-
-      default:
-        break;
-    }//end of switch
-     count+=*syscall_id;
-   }//end of if for syscall_id check
-   else{
-      memcpy(makemsg,syscall_capture[*syscall_id],syscall_capture_size[*syscall_id]);
-   }
-   count_lock.unlock();
-
-   read(sock,recv_buf,100);
-   syscall_id=(int *)recv_buf;
-   syscall = (int *)(recv_buf+sizeof(int)+1);
-   recv_buf+=2*sizeof(int)+2;//offset
-  }//end of while
-  //close socket
-  close(sock);
-}
 
 //Main function
 int main(int args,char *argv[]){
@@ -233,8 +250,11 @@ int main(int args,char *argv[]){
     if(strcmp(argv[i],"-d")==0)
       debug=true;
   }
+  if (debug)
+   printf("Debug enabled\n");
 
   //Listen to connections
+  signal(SIGPIPE, SIG_IGN);
   socket_listen();
 
 }//end of main

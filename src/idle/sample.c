@@ -6,8 +6,9 @@ int main(){
 int i=0;
 for(i=0;i<10;i++)
 {
+ 
  printf("%d : Hello\n",i);
- delay(2000);
+ sleep(2);
 }
  //buf[a]='\0';
  //write(1,buf,10);
