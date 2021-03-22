@@ -70,7 +70,7 @@ def HandleLocalJob(arg):
     sock.close()
     if assigned_port==-1:
         return None
-
+    #Generate ID
     #scheduler
     ips=[]#Need to have no_of_replicas ips
     #Migrate
@@ -78,12 +78,11 @@ def HandleLocalJob(arg):
     obj=SubmittedProcess(id,assigned_port,path,0,ips)
     global SubmittedJobsQueue
     SubmittedJobsQueue.append(obj)
+    #Send back port number to the issue_init script
 
 #Remote job handler
 def HandleRemoteJob(arg):
     pass
-
-
 
 
 

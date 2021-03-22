@@ -31,7 +31,6 @@ Libraries import
 #include <string.h>
 #include <getopt.h>
 #include <string.h>
-
 /*
 -------------------------
 Global declarations
@@ -39,7 +38,7 @@ Global declarations
 */
 bool debug=false;
 int port;
-char issue_system_addr;
+string issue_system_addr,exec_file;
 
 /*
 -------------------------
@@ -128,18 +127,24 @@ int socket_connect(){
 
 //Main functiuon
 int main(int args, char *argv[]){
-/*
-./middleware [options[d]] -e exec_file
-*/
+
 char *exec_file;
 //Parsing cmd line argumants,use getopt
-for(int i=1;i<args;i++){
-  if(strcmp(argv[i],"-d")==0){
-    debug=true;
-  }
-  else if(strcmp(argv[i],"-e")==0){
-    exec_file=argv[i+1];
-    break;
+int opt;
+while(opt=getopt(args,*argv,"")){
+  switch(opt){
+    case 'e':
+      exec_file=optarg;
+      break;
+    case 'h':
+      issue_system_addr=optarg;
+      break;
+    case 'p':
+      port=stoi(optarg);//parse to int
+      break;
+    case 'd':
+      debug=true;
+      break;
   }
 }
 
