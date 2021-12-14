@@ -12,10 +12,7 @@ exec:
 
 /*
 ###############################################################
-Proposing change in structure
-A thread to listen for connections
-If got one,run a thread that handles syscalls
-By keeping syscall_capture vector common to all handler threads
+Provide SIGPIPE handling function for threads
 ###############################################################
 */
 
@@ -206,7 +203,7 @@ void syscall_handler(int sock){
 
 
 //TCP socket listner@port <change>
-void socket_listen(int port=8000,int replicas=2){
+void socket_listen(int port,int replicas){
   /*
   Let master thread run this socket listener
   On connection, create a thread and run syscall_handler with the new sock as parameter
@@ -246,15 +243,20 @@ void socket_listen(int port=8000,int replicas=2){
 //Main function
 int main(int args,char *argv[]){
   //Parsing cmd line arguments; use getopt
+  int port=8000,replica=2,opt; //<<change>> remove assignment
+
+  //Alternate for getopt
+  /*
   for(int i=1;i<args;i++){
     if(strcmp(argv[i],"-d")==0)
       debug=true;
   }
+  */
+  while((opt = getopt(argc, argv, ":if:lrx”)) != -1)
   if (debug)
    printf("Debug enabled\n");
 
   //Listen to connections
-  signal(SIGPIPE, SIG_IGN);
-  socket_listen();
+  socket_listen(port,replica);
 
 }//end of main
