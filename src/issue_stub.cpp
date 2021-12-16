@@ -252,7 +252,6 @@ int main(int args,char *argv[]){
       debug=true;
   }
   */
-  while((opt = getopt(argc, argv, ":if:lrx”)) != -1)
   if (debug)
    printf("Debug enabled\n");
 

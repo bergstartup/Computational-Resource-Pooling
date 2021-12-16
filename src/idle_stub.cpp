@@ -38,7 +38,7 @@ Global declarations
 */
 bool debug=false;
 int port;
-char issue_system_addr[100];
+char *issue_system_addr;
 
 /*
 -------------------------
@@ -84,7 +84,7 @@ void put_data(char *str,pid_t child,long long int addr,int size){
 
 //Chnage the syscall to dummy
 void manipulate(pid_t child,struct user_regs_struct *regs,int *wstatus){
-   regs->orig_rax=39;//change to dummy syscall
+   regs->orig_rax = 39;//change to dummy syscall
    ptrace(PTRACE_SETREGS,child,NULL,regs);
    ptrace(PTRACE_SYSCALL,child,NULL,NULL);
    wait(wstatus);
@@ -140,42 +140,32 @@ int main(int args, char *argv[]){
 char *exec_file;
 //Parsing cmd line argumants,use getopt
 int opt;
-while(opt=getopt(args,*argv,"")){
+while(opt = getopt(args,argv,"")){
   switch(opt){
     case 'e':
-      exec_file=optarg;
+      exec_file = optarg;
       break;
     case 'h':
-      issue_system_addr=optarg;
+      issue_system_addr = optarg;
       break;
     case 'p':
-      port=stoi(optarg);//parse to int
+      port = atoi(optarg);//parse to int
       break;
     case 'd':
-      debug=true;
+      debug = true;
       break;
   }
 }
 
-  char *exec_file;
-  //Parsing cmd line argumants,use getopt
-  for(int i=1;i<args;i++){
-    if(strcmp(argv[i],"-d")==0){
-      debug=true;
-    }
-    else if(strcmp(argv[i],"-e")==0){
-      exec_file=argv[i+1];
-      break;
-    }
-  }
-  if (debug)
+
+ if (debug)
     printf("File to execute : %s\n",exec_file);
 
  //fork a child
- pid_t child=fork();
+ pid_t child = fork();
 
  //Child
- if (child==0){
+ if (child == 0){
   ptrace(PTRACE_TRACEME,child,NULL,NULL);
   execl(exec_file,exec_file+2,NULL);
  }//end of child
