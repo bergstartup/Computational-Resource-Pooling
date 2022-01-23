@@ -1,0 +1,14 @@
+services:
+  issue_node:
+    build: ./IssueNode/
+    image: issue
+    envirnoment:
+      ISSUE_PORT : 9999
+    network_mode: host
+
+  idle_node:
+    build: ./IdleNode/
+    image: idle
+    envirnoment:
+      ISSUE_PORT : 9999
+    network_mode: host
