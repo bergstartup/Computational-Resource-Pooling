@@ -2,13 +2,13 @@ services:
   issue_node:
     build: ./IssueNode/
     image: issue
-    envirnoment:
+    environment:
       ISSUE_PORT : 9999
     network_mode: host
 
   idle_node:
     build: ./IdleNode/
     image: idle
-    envirnoment:
+    environment:
       ISSUE_PORT : 9999
     network_mode: host
