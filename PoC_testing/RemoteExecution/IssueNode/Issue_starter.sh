@@ -1,2 +1,3 @@
 echo "Starting Issue stub"
-./issue -p $ISSUE_PORT
+echo ${ISSUE_PORT}
+./issue -p ${ISSUE_PORT} -d

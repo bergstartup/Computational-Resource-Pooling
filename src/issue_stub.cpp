@@ -7,7 +7,7 @@ About issue_system_script
 5.Have a common syscall_capture vector
 6.Use the FT approch to reply to syscalls
 exec:
-./issue -p -r -d //p for port, d for debug
+./issue -p -d //p for port, d for debug
 */
 
 /*
@@ -42,7 +42,7 @@ Global declarations
 -------------------------
 */
 #define EXPECTED_REPLICA_COUNT 3
-using namespace std;
+//using namespace std;
 bool debug=false;
 std::vector<void *> syscall_capture;//2d 0 for data and 1 for size
 std::vector<int> syscall_capture_size;
@@ -234,7 +234,7 @@ void socket_listen(int port){
     if (debug)
       printf("Connected with \n");//print as well as the address
     //create thread with new_socket as parameter
-    thread th(syscall_handler,new_socket);
+    std::thread th(syscall_handler,new_socket);
     th.detach();
   }
 }
@@ -246,9 +246,9 @@ int main(int args,char *argv[]){
   //Decls
   int port,opt;
   bool debug;
-
+  printf("Executing\n");
   //Parsing cmd line arguments
-  while(opt = getopt(args,argv,"")){
+  while((opt = getopt(args,argv,"p:d")) != -1){
     switch(opt){
       case 'p':
         port = atoi(optarg);//parse to int
@@ -257,6 +257,7 @@ int main(int args,char *argv[]){
         debug = true;
         break;
     }
+    printf("run");
   }
 
   if (debug)

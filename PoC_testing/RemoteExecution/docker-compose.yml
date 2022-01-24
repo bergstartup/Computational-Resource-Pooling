@@ -3,7 +3,7 @@ services:
     build: ./IssueNode/
     image: issue
     environment:
-      ISSUE_PORT : 9999
+      ISSUE_PORT : 8000
     network_mode: host
 
   idle_node:

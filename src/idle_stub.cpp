@@ -7,7 +7,7 @@ About idle_system_script
 5.Get syscall's return result and place the same to child
 6.Repeat step 4&5 till child exits
 exec:
-./idle -e "" -h "" -p -d//e for exec_file, h for host and p for port d for debug
+./idle -e "" -h "" -p -d //e for exec_file, h for host and p for port d for debug
 */
 
 
@@ -98,9 +98,10 @@ void manipulate(pid_t child,struct user_regs_struct *regs,int *wstatus){
 int socket_connect(){
   int sockfd;
   struct sockaddr_in servaddr;
-
+ 
   // socket create and verification
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
   if (sockfd == -1) {
      if (debug)
       printf("socket creation failed...\n");
@@ -140,7 +141,8 @@ int main(int args, char *argv[]){
 char *exec_file;
 //Parsing cmd line argumants,use getopt
 int opt;
-while(opt = getopt(args,argv,"")){
+printf("Executing\n");
+while((opt = getopt(args,argv,"e:h:p:d")) != -1){
   switch(opt){
     case 'e':
       exec_file = optarg;
@@ -155,6 +157,7 @@ while(opt = getopt(args,argv,"")){
       debug = true;
       break;
   }
+  printf("opts");
 }
 
 

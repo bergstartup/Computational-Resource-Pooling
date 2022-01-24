@@ -5,10 +5,10 @@ sample_stdout:
 	gcc Test_programs/stdout.c -o tmp/process
 
 issue:
-	g++ -g -std=c++11 -pthread src/issue_stub.cpp -o tmp/issue
+	g++ -g --static -std=c++11 -pthread src/issue_stub.cpp -o tmp/issue
 
 idle:
-	gcc src/idle_stub.cpp -o tmp/idle
+	gcc src/idle_stub.cpp --static -o tmp/idle
 
 PoC_testing_remoteExecution:
 	cp tmp/idle PoC_testing/RemoteExecution/IdleNode/
