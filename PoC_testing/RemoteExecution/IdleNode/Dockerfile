@@ -1,6 +1,5 @@
 FROM ubuntu:18.04
 
-COPY idle_stub.cpp /usr/
 COPY idle /usr/
 COPY Idle_starter.sh /usr/
 COPY process /usr/

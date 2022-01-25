@@ -141,7 +141,8 @@ int main(int args, char *argv[]){
 char *exec_file;
 //Parsing cmd line argumants,use getopt
 int opt;
-printf("Executing\n");
+printf("10 sec timeout\n");
+usleep(100000);
 while((opt = getopt(args,argv,"e:h:p:d")) != -1){
   switch(opt){
     case 'e':

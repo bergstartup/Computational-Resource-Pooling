@@ -2,6 +2,8 @@ services:
   issue_node:
     build: ./IssueNode/
     image: issue
+    volumes:
+      - ./IssueUSR/resultFile:/usr/resultFile
     environment:
       ISSUE_PORT : 8000
     network_mode: host
