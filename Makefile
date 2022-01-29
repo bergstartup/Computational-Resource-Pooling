@@ -1,5 +1,13 @@
+inputIncrement: sample_inpIncre install
+fileWrite: sample_fileWrite install
 stdout: sample_stdout install
 install: issue idle PoC_testing_remoteExecution PoC_testing_faultTolerance tmp_clear
+
+sample_inpIncre:
+	gcc Test_programs/inputIncrement.c -o tmp/process
+
+sample_fileWrite:
+	gcc Test_programs/fileWrite.c -o tmp/process
 
 sample_stdout:
 	gcc Test_programs/stdout.c -o tmp/process
