@@ -246,7 +246,6 @@ int main(int args,char *argv[]){
   //Decls
   int port,opt;
   bool debug;
-  printf("Executing\n");
   //Parsing cmd line arguments
   while((opt = getopt(args,argv,"p:d")) != -1){
     switch(opt){
