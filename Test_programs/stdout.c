@@ -8,7 +8,7 @@ for(i=0;i<10;i++)
 {
  
  printf("%d : Hello\n",i);
- sleep(2);
+ //sleep(2);
 }
  //buf[a]='\0';
  //write(1,buf,10);

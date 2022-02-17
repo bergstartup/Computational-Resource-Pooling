@@ -7,7 +7,7 @@ About issue_system_script
 5.Have a common syscall_capture vector
 6.Use the FT approch to reply to syscalls
 exec:
-./issue -p -r -d //p for port, r for no of replicas, d for debug
+./issue -p -d //p for port, d for debug
 */
 
 /*
@@ -41,7 +41,8 @@ Libraries import
 Global declarations
 -------------------------
 */
-using namespace std;
+#define EXPECTED_REPLICA_COUNT 3
+//using namespace std;
 bool debug=false;
 std::vector<void *> syscall_capture;//2d 0 for data and 1 for size
 std::vector<int> syscall_capture_size;
@@ -203,7 +204,7 @@ void syscall_handler(int sock){
 
 
 //TCP socket listner@port <change>
-void socket_listen(int port,int replicas){
+void socket_listen(int port){
   /*
   Let master thread run this socket listener
   On connection, create a thread and run syscall_handler with the new sock as parameter
@@ -226,14 +227,14 @@ void socket_listen(int port,int replicas){
   //bind
   bind(serverfd, (struct sockaddr * )&address,sizeof(address));
   //listen
-  listen(serverfd,replicas);
+  listen(serverfd,EXPECTED_REPLICA_COUNT);
   //accept the new connection(s)
   while (true){
     new_socket=accept(serverfd,(struct sockaddr * )&address,(socklen_t *)&addrlen);
     if (debug)
       printf("Connected with \n");//print as well as the address
     //create thread with new_socket as parameter
-    thread th(syscall_handler,new_socket);
+    std::thread th(syscall_handler,new_socket);
     th.detach();
   }
 }
@@ -242,20 +243,26 @@ void socket_listen(int port,int replicas){
 
 //Main function
 int main(int args,char *argv[]){
-  //Parsing cmd line arguments; use getopt
-  int port=8000,replica=2,opt; //<<change>> remove assignment
-
-  //Alternate for getopt
-  /*
-  for(int i=1;i<args;i++){
-    if(strcmp(argv[i],"-d")==0)
-      debug=true;
+  //Decls
+  int port,opt;
+  bool debug;
+  //Parsing cmd line arguments
+  while((opt = getopt(args,argv,"p:d")) != -1){
+    switch(opt){
+      case 'p':
+        port = atoi(optarg);//parse to int
+        break;
+      case 'd':
+        debug = true;
+        break;
+    }
+    printf("run");
   }
-  */
+
   if (debug)
    printf("Debug enabled\n");
 
   //Listen to connections
-  socket_listen(port,replica);
+  socket_listen(port);
 
 }//end of main

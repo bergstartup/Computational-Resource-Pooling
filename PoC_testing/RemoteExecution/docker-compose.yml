@@ -1,0 +1,16 @@
+services:
+  issue_node:
+    build: ./IssueNode/
+    image: issue
+    volumes:
+      - ./IssueUSR/resultFile:/usr/resultFile
+    environment:
+      ISSUE_PORT : 8000
+    network_mode: host
+
+  idle_node:
+    build: ./IdleNode/
+    image: idle
+    environment:
+      ISSUE_PORT : 9999
+    network_mode: host

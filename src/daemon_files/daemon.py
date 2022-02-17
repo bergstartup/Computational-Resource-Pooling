@@ -43,9 +43,9 @@ def CreateThread(func_name,arg):
 def GetDetails(data,addr):
     data_list=pickle.load(data)
     pid = data[0]
-    msg=data[1]
+    msg = data[1]
     msg.append(addr)
-    Queuejob=ControllerDT(pid,msg)
+    Queuejob = ControllerDT(pid,msg)
     return Queuejob
 
 
@@ -60,13 +60,14 @@ def HandleLocalJob(arg):
     local_addr=arg[3]
     #Assign a port to listen
     #Only 10 remote process could exec at a time
-    assigned_port=-1
+    syscall_listner_port=-1
     for i in range(10000,10011):
         if i not in PORTS:
-            assigned_port=i
+            syscall_listner_port=i
             break
+
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(assigned_port,local_addr)
+    sock.sendto(syscall_listner_port,local_addr)
     sock.close()
     if assigned_port==-1:
         return None
@@ -88,9 +89,9 @@ def HandleRemoteJob(arg):
 
 #######Threads#######
 #UDP listner @port 8000
-def UDPListner():
+def UDPListner(port=8000):
     sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
-    addr=("127.0.0.1",8000)
+    addr=("127.0.0.1",port)
     sock.bind(addr)
     global ControllerQueue
     while True:
@@ -113,3 +114,5 @@ def Controller():
 
 
 #Main function
+UDPListner()
+Controller()

@@ -7,7 +7,7 @@ About idle_system_script
 5.Get syscall's return result and place the same to child
 6.Repeat step 4&5 till child exits
 exec:
-./idle -e "" -h "" -p -d//e for exec_file, h for host and p for port d for debug
+./idle -e "" -h "" -p -d //e for exec_file, h for host and p for port d for debug
 */
 
 
@@ -98,13 +98,14 @@ void manipulate(pid_t child,struct user_regs_struct *regs,int *wstatus){
 int socket_connect(){
   int sockfd;
   struct sockaddr_in servaddr;
-
+ 
   // socket create and verification
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
+
   if (sockfd == -1) {
      if (debug)
       printf("socket creation failed...\n");
-      exit(0);
+      exit(1);
   }
   else{
       if (debug)
@@ -115,13 +116,13 @@ int socket_connect(){
   // assign IP, PORT
   servaddr.sin_family = AF_INET;
   servaddr.sin_addr.s_addr = inet_addr("127.0.0.1");//issue_system_addr <change>
-  servaddr.sin_port = htons(8000);//port <change>
+  servaddr.sin_port = htons(port);//port <change>
 
   // connect the client socket to server socket
   if (connect(sockfd, (struct sockaddr *)&servaddr, sizeof(servaddr)) != 0) {
       if (debug)
         printf("connection with the server failed...\n");
-      exit(0);
+      exit(2);
   }
   else{
       if (debug)
@@ -139,8 +140,8 @@ int main(int args, char *argv[]){
 
 char *exec_file;
 //Parsing cmd line argumants,use getopt
-int opt;
-while(opt = getopt(args,argv,"")){
+int opt,timeout;
+while((opt = getopt(args,argv,"e:h:p:n:d")) != -1){
   switch(opt){
     case 'e':
       exec_file = optarg;
@@ -151,6 +152,8 @@ while(opt = getopt(args,argv,"")){
     case 'p':
       port = atoi(optarg);//parse to int
       break;
+    case 'n':
+      timeout = atoi(optarg);
     case 'd':
       debug = true;
       break;
@@ -159,6 +162,10 @@ while(opt = getopt(args,argv,"")){
 
 
  if (debug)
+    printf("Timeout : %d \n",timeout*1000000);
+ usleep(timeout*1000000);
+ 
+if (debug)
     printf("File to execute : %s\n",exec_file);
 
  //fork a child
@@ -252,7 +259,7 @@ while(opt = getopt(args,argv,"")){
             break;
 
           //write syscall
-        	case 1:
+          case 1:
              //attributes : int fd,char *buf,int size
              readval = (char *) malloc(regs.rdx);
              get_data(readval,child,regs.rsi,regs.rdx);
@@ -273,7 +280,7 @@ while(opt = getopt(args,argv,"")){
 
              read(new_socket,ret_buf,100);
              ptrace(PTRACE_GETREGS,child,NULL,&regs);
-             regs.rax=*(int *)ret_buf;//change to dummy syscall
+             regs.rax=*(int *)ret_buf;
              ptrace(PTRACE_SETREGS,child,NULL,&regs);
 
              if (debug)
@@ -310,7 +317,7 @@ while(opt = getopt(args,argv,"")){
 
 
          //fstat syscall
-          case 5:
+         case 5:
             //dont want non program syscalls calls to interfer for now
             if (regs.rdi<3)
               break;
@@ -373,7 +380,8 @@ while(opt = getopt(args,argv,"")){
 
      }//end of switch
      status=ptrace(PTRACE_GETREGS,child,NULL,&regs);
-     printf("[EX] return val[rax] : %lld\n\n",regs.rax);
+     if (debug)
+     	printf("[EX] return val[rax] : %lld\n\n",regs.rax);
    }//end of if
    else{
      status=ptrace(PTRACE_SYSCALL,child,NULL,NULL);
